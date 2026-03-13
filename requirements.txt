@@ -1,0 +1,6 @@
+cmake
+numpy
+opencv-python
+flask
+bcrypt
+face_recognition

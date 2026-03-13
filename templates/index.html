@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendify - Premium Student Attendance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            900: '#0c4a6e',
+                        },
+                        dark: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            border: '#334155'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .view-section { display: none; }
+        .view-section.active { 
+            display: block; 
+            animation: fadeIn 0.3s ease-in-out; 
+        }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        /* Custom scrollbar for a premium feel */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        /* Sidebar transition for mobile */
+        .sidebar-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-dark-bg text-gray-900 dark:text-gray-100 font-sans antialiased transition-colors duration-300 flex h-screen overflow-hidden">
+
+    <!-- Mobile Backdrop -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/50 z-20 hidden md:hidden" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="sidebar-transition fixed md:static w-64 h-full bg-white dark:bg-dark-card border-r border-gray-200 dark:border-dark-border flex flex-col z-30 shadow-sm -translate-x-full md:translate-x-0">
+        <div class="h-16 flex items-center px-6 border-b border-gray-200 dark:border-dark-border">
+            <i class="fa-solid fa-graduation-cap text-brand-500 text-2xl mr-3"></i>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-500 to-indigo-500">Attendify</h1>
+            <!-- Close button on mobile -->
+            <button onclick="toggleSidebar()" class="ml-auto md:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        
+        <nav class="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
+            <a href="#" data-view="dashboard" class="nav-link active flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-500 transition-colors">
+                <i class="fa-solid fa-chart-pie w-6"></i> Dashboard
+            </a>
+            <a href="#" data-view="students" class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-border/50 transition-colors">
+                <i class="fa-solid fa-users w-6"></i> Students
+            </a>
+            <a href="#" data-view="attendance" class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-border/50 transition-colors">
+                <i class="fa-solid fa-calendar-check w-6"></i> Attendance
+            </a>
+            <a href="#" data-view="reports" class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-border/50 transition-colors">
+                <i class="fa-solid fa-file-lines w-6"></i> Reports
+            </a>
+            <a href="#" data-view="scanner" class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-border/50 transition-colors">
+                <i class="fa-solid fa-camera-retro w-6"></i> Face Scanner
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-gray-200 dark:border-dark-border">
+            <button id="theme-toggle" class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100 dark:hover:bg-dark-border transition-colors">
+                <i class="fa-solid fa-moon mr-2 dark:hidden"></i>
+                <span class="dark:hidden">Dark Mode</span>
+                <i class="fa-solid fa-sun mr-2 hidden dark:block text-yellow-500"></i>
+                <span class="hidden dark:block">Light Mode</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto relative bg-gray-50 dark:bg-dark-bg transition-colors duration-300 w-full">
+        <!-- Mobile Top Bar -->
+        <div class="md:hidden flex items-center h-14 px-4 bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border sticky top-0 z-10">
+            <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-border transition-colors">
+                <i class="fa-solid fa-bars text-lg text-gray-700 dark:text-gray-200"></i>
+            </button>
+            <div class="ml-3 flex items-center gap-2">
+                <i class="fa-solid fa-graduation-cap text-brand-500 text-lg"></i>
+                <span class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-500 to-indigo-500">Attendify</span>
+            </div>
+        </div>
+        <div class="p-4 md:p-8 max-w-7xl mx-auto">
+            
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="view-section active">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8">
+                    <div>
+                        <h2 class="text-2xl font-bold">Dashboard Overview</h2>
+                        <p class="text-gray-500 dark:text-gray-400 mt-1" id="current-date">Loading date...</p>
+                    </div>
+                    <div class="bg-white dark:bg-dark-card px-6 py-3 rounded-xl shadow-sm border border-gray-100 dark:border-dark-border flex items-center gap-3">
+                        <i class="fa-regular fa-clock text-brand-500 text-xl"></i>
+                        <span id="live-clock" class="text-xl font-mono border-l pl-3 border-gray-200 dark:border-gray-700 font-bold tracking-wider">00:00:00</span>
+                    </div>
+                </div>
+
+                <!-- 4 Modern Stat Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+                    <div class="bg-white dark:bg-dark-card rounded-xl p-6 shadow-sm border border-gray-100 dark:border-dark-border hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Students</p>
+                                <h3 class="text-3xl font-bold mt-2" id="dash-total">-</h3>
+                            </div>
+                            <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                <i class="fa-solid fa-users text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-dark-card rounded-xl p-6 shadow-sm border border-gray-100 dark:border-dark-border hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Present</p>
+                                <h3 class="text-3xl font-bold mt-2 text-green-600 dark:text-green-400" id="dash-present">-</h3>
+                            </div>
+                            <div class="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400">
+                                <i class="fa-solid fa-user-check text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-dark-card rounded-xl p-6 shadow-sm border border-gray-100 dark:border-dark-border hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Absent</p>
+                                <h3 class="text-3xl font-bold mt-2 text-red-600 dark:text-red-400" id="dash-absent">-</h3>
+                            </div>
+                            <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400">
+                                <i class="fa-solid fa-user-xmark text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-dark-card rounded-xl p-6 shadow-sm border border-gray-100 dark:border-dark-border hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Late</p>
+                                <h3 class="text-3xl font-bold mt-2 text-yellow-600 dark:text-yellow-400" id="dash-late">-</h3>
+                            </div>
+                            <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-yellow-600 dark:text-yellow-400">
+                                <i class="fa-solid fa-user-clock text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                    <!-- Today's Overview (Donut) -->
+                    <div class="bg-white dark:bg-dark-card rounded-xl p-6 shadow-sm border border-gray-100 dark:border-dark-border lg:col-span-1 flex flex-col">
+                        <h3 class="text-lg font-semibold mb-4">Today's Overview</h3>
+                        <div class="relative flex-1 min-h-[250px] w-full flex items-center justify-center">
+                            <canvas id="todayChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- Weekly Trend (Bar) -->
+                    <div class="bg-white dark:bg-dark-card rounded-xl p-6 shadow-sm border border-gray-100 dark:border-dark-border lg:col-span-2 flex flex-col">
+                        <h3 class="text-lg font-semibold mb-4">Weekly Trend</h3>
+                        <div class="relative flex-1 min-h-[250px] w-full">
+                            <canvas id="weeklyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-students" class="view-section">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+                    <h2 class="text-2xl font-bold">Student Directory</h2>
+                    <button id="btn-add-student" class="bg-brand-500 hover:bg-brand-600 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm shadow-brand-500/30 flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Add Student
+                    </button>
+                </div>
+                
+                <div class="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-100 dark:border-dark-border overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left whitespace-nowrap">
+                            <thead class="bg-gray-50 dark:bg-dark-border/30 text-gray-500 dark:text-gray-400 text-sm uppercase font-semibold">
+                                <tr>
+                                    <th class="px-6 py-4 border-b border-gray-100 dark:border-dark-border">Roll #</th>
+                                    <th class="px-6 py-4 border-b border-gray-100 dark:border-dark-border">Name</th>
+                                    <th class="px-6 py-4 border-b border-gray-100 dark:border-dark-border">Dept</th>
+                                    <th class="px-6 py-4 border-b border-gray-100 dark:border-dark-border text-center">Year</th>
+                                    <th class="px-6 py-4 border-b border-gray-100 dark:border-dark-border text-center">Today's Status</th>
+                                    <th class="px-6 py-4 border-b border-gray-100 dark:border-dark-border text-center">Attendance %</th>
+                                    <th class="px-6 py-4 border-b border-gray-100 dark:border-dark-border text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-dark-border text-sm">
+                                <!-- Student Rows dynamically injected here -->
+                                <tr>
+                                    <td colspan="7" class="px-6 py-8 text-center text-sm text-gray-500">
+                                        <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading students...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance View -->
+            <div id="view-attendance" class="view-section">
+                <h2 class="text-2xl font-bold mb-6">Manual Attendance</h2>
+                
+                <div class="flex flex-col sm:flex-row gap-4 mb-8 bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm border border-gray-100 dark:border-dark-border">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Date</label>
+                        <input type="date" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-gray-200">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Department</label>
+                        <select class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-gray-200">
+                            <option>All Departments</option>
+                            <option>Computer Science</option>
+                            <option>Electrical Eng.</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- Student Cards dynamically injected here -->
+                </div>
+            </div>
+
+            <!-- Reports View -->
+            <div id="view-reports" class="view-section">
+                <h2 class="text-2xl font-bold mb-6">Attendance Reports</h2>
+                <div class="bg-white dark:bg-dark-card rounded-xl p-6 shadow-sm border border-gray-100 dark:border-dark-border max-w-3xl mx-auto">
+                    <!-- Filter Controls -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">From Date</label>
+                            <input type="date" id="report-from-date" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-gray-200">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">To Date</label>
+                            <input type="date" id="report-to-date" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-gray-200">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Department</label>
+                            <select id="report-dept" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-gray-200">
+                                <option value="">All Departments</option>
+                                <option>Computer Science</option>
+                                <option>Electrical Eng.</option>
+                                <option>Mechanical Eng.</option>
+                                <option>Civil Eng.</option>
+                                <option>ECE</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Year</label>
+                            <select id="report-year" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-gray-200">
+                                <option value="">All Years</option>
+                                <option value="1st">1st Year</option>
+                                <option value="2nd">2nd Year</option>
+                                <option value="3rd">3rd Year</option>
+                                <option value="4th">4th Year</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Export Area -->
+                    <div class="text-center border-t border-gray-100 dark:border-dark-border pt-6">
+                        <div class="w-16 h-16 bg-brand-50 dark:bg-brand-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-file-csv text-2xl text-brand-500"></i>
+                        </div>
+                        <p class="text-gray-500 dark:text-gray-400 mb-5 text-sm">Download filtered attendance data as CSV</p>
+                        <button id="btn-export-csv" class="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white px-8 py-3 rounded-lg font-medium transition-colors shadow-lg shadow-brand-500/25">
+                            <i class="fa-solid fa-download"></i> Export Filtered CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Face Scanner View -->
+            <div id="view-scanner" class="view-section">
+                <h2 class="text-2xl font-bold mb-6">Face ID Engine</h2>
+                
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-8">
+                    <!-- ML Camera feed -->
+                    <div class="xl:col-span-2">
+                        <div class="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border overflow-hidden flex flex-col h-full">
+                            <div class="p-4 border-b border-gray-100 dark:border-dark-border flex justify-between items-center bg-gray-50 dark:bg-dark-border/20">
+                                <div class="flex items-center gap-3">
+                                    <div class="relative flex h-3 w-3">
+                                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                      <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                    </div>
+                                    <span class="font-semibold text-sm text-gray-700 dark:text-gray-200">Live Camera Stream</span>
+                                </div>
+                                <button id="cam-toggle-btn" class="text-sm bg-brand-500 hover:bg-brand-600 text-white font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm focus:outline-none">
+                                    <i class="fa-solid fa-play"></i> Start Camera Scanner
+                                </button>
+                            </div>
+                            <!-- Native HTML5 Video for zero-latency (WhatsApp Style) -->
+                            <div class="relative bg-black aspect-video flex-1 flex items-center justify-center overflow-hidden min-h-[220px] md:min-h-[300px] xl:min-h-[400px]">
+                                <video id="local-video" autoplay playsinline class="absolute inset-0 w-full h-full object-cover hidden"></video>
+                                <canvas id="hidden-ai-canvas" class="hidden"></canvas>
+                                <div id="cam-offline-msg" class="text-gray-500 flex flex-col items-center">
+                                    <i class="fa-solid fa-video-slash text-4xl mb-3"></i>
+                                    <p>Camera is currently offline</p>
+                                </div>
+                                <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none"></div>
+                            </div>
+
+                            <!-- New Live Recognition Panel (Clean-Stream Architecture) -->
+                            <div class="bg-gradient-to-r from-gray-900 to-black p-5 border-t border-white/10 flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div id="live-panel-avatar" class="w-14 h-14 rounded-full bg-gray-800 border-2 border-brand-500/30 flex items-center justify-center overflow-hidden">
+                                        <i class="fa-solid fa-user-ninja text-gray-600 text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Live AI Recognition</p>
+                                        <h4 id="live-panel-name" class="text-xl font-bold text-white">Scanning...</h4>
+                                    </div>
+                                </div>
+                                <div id="live-panel-status-container" class="flex flex-col items-end gap-2">
+                                    <div id="live-panel-badge" class="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-tighter shadow-lg shadow-black/50 border border-white/10 hidden">
+                                        Status
+                                    </div>
+                                    <p id="live-panel-time" class="text-[10px] font-mono text-gray-500"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Recognitions list -->
+                    <div class="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border flex flex-col h-[500px] xl:h-[auto]">
+                        <div class="p-5 border-b border-gray-100 dark:border-dark-border bg-gray-50 dark:bg-dark-border/10">
+                            <h3 class="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+                                <i class="fa-solid fa-bolt text-yellow-500"></i> Recently Recognized
+                            </h3>
+                            <p class="text-sm text-gray-500 mt-1">Live updates from ML scanner</p>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-4 space-y-3" id="scanner-recent-list">
+                            <!-- JS Fetched Content injected here -->
+                            <div class="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-sm">
+                                <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Waiting for scans...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Add Student Modal -->
+    <div id="modal-add-student" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300 backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-dark-card w-full max-w-lg rounded-2xl shadow-xl border border-gray-100 dark:border-dark-border p-4 sm:p-6 transform scale-95 transition-transform duration-300 max-h-[90vh] overflow-y-auto">
+            <h3 id="modal-title" class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Add New Student</h3>
+            <input type="hidden" id="edit-student-id">
+            
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+                    <input type="text" id="input-student-name" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-white" placeholder="John Doe">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Roll Number</label>
+                    <input type="text" id="input-student-roll" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-white" placeholder="2024CS01">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
+                    <input type="text" id="input-student-dept" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-white" placeholder="Computer Science">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Year</label>
+                    <select id="input-student-year" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-white">
+                        <option value="1st">1st Year</option>
+                        <option value="2nd">2nd Year</option>
+                        <option value="3rd">3rd Year</option>
+                        <option value="4th">4th Year</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
+                <input type="email" id="input-student-email" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-white" placeholder="john@example.com">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contact Number</label>
+                <input type="text" id="input-student-contact" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-white" placeholder="+1234567890">
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Face Capture</label>
+                
+                <!-- Live Preview Panel: High-Perf Canvas -->
+                <div id="live-preview-panel" class="relative w-full rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-700 bg-black" style="aspect-ratio: 4/3;">
+                    <canvas id="reg-preview-canvas" class="hidden w-full h-full object-cover"></canvas>
+                    <img id="reg-preview-tracker" src="" class="hidden">
+                    <img id="capture-preview" src="" class="hidden w-full h-full object-cover">
+                    
+                    <!-- Placeholder when no stream -->
+                    <div id="preview-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 gap-2">
+                        <i class="fa-solid fa-video text-4xl"></i>
+                        <span class="text-xs font-medium">Click 'Start Camera' to begin</span>
+                    </div>
+                    
+                    <!-- Countdown Overlay -->
+                    <div id="countdown-overlay" class="hidden absolute inset-0 bg-black/60 flex items-center justify-center z-10">
+                        <span id="countdown-number" class="text-8xl font-black text-white drop-shadow-lg">3</span>
+                    </div>
+                    
+                    <!-- Captured Success Overlay -->
+                    <div id="captured-overlay" class="hidden absolute inset-0 bg-green-500/20 flex items-center justify-center z-10">
+                        <div class="bg-white dark:bg-dark-card px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                            <i class="fa-solid fa-check text-green-500 text-lg"></i>
+                            <span class="text-sm font-bold text-green-600">FACE REGISTERED</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Real-Time Status Bar -->
+                <div id="face-status-bar" class="w-full py-2 px-4 rounded-b-xl text-center text-xs font-bold text-white uppercase tracking-wider bg-gray-400 transition-all duration-300">
+                    Camera Offline
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-3 gap-2 mt-3">
+                    <button id="btn-start-preview" class="bg-indigo-50 dark:bg-indigo-900/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 px-3 py-2 rounded-xl text-xs font-semibold transition-all border border-indigo-100 dark:border-indigo-800 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-video"></i> Start Camera
+                    </button>
+                    <button id="btn-live-capture" disabled class="bg-gray-200 dark:bg-gray-700 text-gray-400 px-3 py-2 rounded-xl text-xs font-semibold transition-all border border-gray-200 dark:border-gray-600 flex items-center justify-center gap-1.5 cursor-not-allowed">
+                        <i class="fa-solid fa-camera"></i> Capture (3s)
+                    </button>
+                    <div class="relative">
+                        <input type="file" id="input-student-image" accept="image/*" class="hidden">
+                        <label for="input-student-image" class="cursor-pointer bg-emerald-50 dark:bg-emerald-900/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 px-3 py-2 rounded-xl text-xs font-semibold transition-all border border-emerald-100 dark:border-emerald-800 flex items-center justify-center gap-1.5 h-full">
+                            <i class="fa-solid fa-upload"></i> Upload
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-dark-border">
+                <button id="btn-cancel-student" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-border transition-colors">Cancel</button>
+                <button id="btn-save-student" disabled class="bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-sm focus:outline-none flex items-center gap-2 cursor-not-allowed">
+                    <i class="fa-solid fa-lock"></i> Save Student
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification (Re-used for general alerts) -->
+    <div id="toast" class="fixed bottom-5 right-5 transform translate-y-full opacity-0 transition-all duration-300 bg-white dark:bg-gray-800 border-l-4 border-brand-500 shadow-xl rounded-lg p-4 flex items-start space-x-3 z-50">
+        <div id="toast-icon"><i class="fa-solid fa-circle-info text-brand-500 text-xl"></i></div>
+        <div>
+            <h4 class="text-sm font-bold text-gray-900 dark:text-white" id="toast-title">Notification</h4>
+            <p class="text-sm text-gray-500 dark:text-gray-400" id="toast-message">Message here</p>
+        </div>
+    </div>
+
+    <script>
+        // Sidebar toggle for mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            const isOpen = !sidebar.classList.contains('-translate-x-full');
+            if (isOpen) {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            } else {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            }
+        }
+
+        // Toast logic
+        function showToast(titleText, messageText, type = 'info') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').innerText = titleText;
+            document.getElementById('toast-message').innerText = messageText;
+            
+            toast.className = `fixed bottom-5 right-5 transform translate-y-full opacity-0 transition-all duration-300 bg-white dark:bg-gray-800 border-l-4 shadow-xl rounded-lg p-4 flex items-start space-x-3 z-50 ${type === 'error' ? 'border-red-500' : 'border-brand-500'}`;
+            document.getElementById('toast-icon').innerHTML = type === 'error' ? '<i class="fa-solid fa-circle-xmark text-red-500 text-xl"></i>' : '<i class="fa-solid fa-circle-check text-brand-500 text-xl"></i>';
+
+            // Show
+            toast.classList.remove('translate-y-full', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-full', 'opacity-0');
+            }, 3000);
+        }
+        // 1. Theme Configuration
+        const themeBtn = document.getElementById('theme-toggle');
+        // Global UI State
+        let cameraRunning = false;
+        let heartbeatInterval = null;
+        const htmlEl = document.documentElement;
+
+        // Auto-check local storage
+        if (localStorage.getItem('theme') === 'light') {
+            htmlEl.classList.remove('dark');
+        }
+
+        themeBtn.addEventListener('click', () => {
+            if(htmlEl.classList.contains('dark')) {
+                htmlEl.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                htmlEl.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            updateChartsTheme();
+        });
+
+        // 2. Sidebar Navigation Logic
+        const navLinks = document.querySelectorAll('.nav-link');
+        const viewSections = document.querySelectorAll('.view-section');
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Clear active states
+                navLinks.forEach(l => {
+                    l.classList.remove('bg-brand-50', 'dark:bg-brand-900/20', 'text-brand-600', 'dark:text-brand-500', 'active');
+                    l.classList.add('text-gray-600', 'dark:text-gray-400');
+                });
+                
+                // Add active state to clicked
+                link.classList.remove('text-gray-600', 'dark:text-gray-400');
+                link.classList.add('bg-brand-50', 'dark:bg-brand-900/20', 'text-brand-600', 'dark:text-brand-500', 'active');
+                
+                // Switch view
+                viewSections.forEach(v => v.classList.remove('active'));
+                const target = link.getAttribute('data-view');
+                document.getElementById(`view-${target}`).classList.add('active');
+
+                // If navigating away from scanner, stop the camera
+                if (target !== 'scanner' && cameraRunning) {
+                    // This calls the same logic as the Stop button
+                    document.getElementById('cam-toggle-btn').click();
+                }
+
+                // Auto-close sidebar on mobile
+                if (window.innerWidth < 768) {
+                    toggleSidebar();
+                }
+            });
+        });
+
+        // 3. Date and Clock Logic
+        function updateDateTime() {
+            const now = new Date();
+            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date').textContent = now.toLocaleDateString(undefined, dateOptions);
+            document.getElementById('live-clock').textContent = now.toLocaleTimeString([], { hour12: false });
+        }
+        setInterval(updateDateTime, 1000);
+        updateDateTime(); 
+
+        // 4. Chart.js Initialization
+        let todayChart, weeklyChart;
+        const chartColors = {
+            present: '#10B981',
+            absent: '#EF4444',
+            late: '#EAB308' // yellow-500
+        };
+
+        function getChartThemeColors() {
+            const isDark = document.documentElement.classList.contains('dark');
+            return {
+                text: isDark ? '#94a3b8' : '#64748b',
+                grid: isDark ? '#334155' : '#e2e8f0'
+            };
+        }
+
+        function initCharts() {
+            const colors = getChartThemeColors();
+            Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
+
+            const ctx1 = document.getElementById('todayChart').getContext('2d');
+            todayChart = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Present', 'Absent', 'Late'],
+                    datasets: [{
+                        data: [0, 0, 0], 
+                        backgroundColor: [chartColors.present, chartColors.absent, chartColors.late],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: colors.text, padding: 20 } }
+                    },
+                    cutout: '75%'
+                }
+            });
+
+            const ctx2 = document.getElementById('weeklyChart').getContext('2d');
+            weeklyChart = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                    datasets: [
+                        { label: 'Present', data: [85, 90, 88, 92, 0], backgroundColor: chartColors.present, borderRadius: 4 },
+                        { label: 'Absent', data: [10, 5, 8, 3, 0], backgroundColor: chartColors.absent, borderRadius: 4 },
+                        { label: 'Late', data: [5, 5, 4, 5, 0], backgroundColor: chartColors.late, borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { stacked: true, grid: { display: false }, ticks: { color: colors.text } },
+                        y: { stacked: true, grid: { color: colors.grid, drawBorder: false }, ticks: { color: colors.text } }
+                    }
+                }
+            });
+        }
+
+        function updateChartsTheme() {
+            if(!todayChart || !weeklyChart) return;
+            const colors = getChartThemeColors();
+            
+            todayChart.options.plugins.legend.labels.color = colors.text;
+            todayChart.update();
+
+            weeklyChart.options.scales.x.ticks.color = colors.text;
+            weeklyChart.options.scales.y.ticks.color = colors.text;
+            weeklyChart.options.scales.y.grid.color = colors.grid;
+            weeklyChart.update();
+        }
+
+        // 5. Backend Data Polling
+        let liveStatusInterval = null;
+
+        function updateLivePanel() {
+            if (!cameraRunning) return;
+            
+            fetch('/api/scanner/status')
+                .then(r => r.json())
+                .then(data => {
+                    const nameEl = document.getElementById('live-panel-name');
+                    const badgeEl = document.getElementById('live-panel-badge');
+                    const timeEl = document.getElementById('live-panel-time');
+                    const avatarEl = document.getElementById('live-panel-avatar');
+
+                    if (data.status === 'SCANNING' || !data.name) {
+                        nameEl.innerText = 'Scanning...';
+                        nameEl.className = 'text-xl font-bold text-white animate-pulse';
+                        badgeEl.classList.add('hidden');
+                        timeEl.innerText = '';
+                        avatarEl.innerHTML = '<i class="fa-solid fa-user-ninja text-gray-600 text-2xl animate-spin-slow"></i>';
+                    } else {
+                        nameEl.innerText = data.name;
+                        nameEl.className = 'text-xl font-bold text-white';
+                        badgeEl.classList.remove('hidden');
+                        timeEl.innerText = `Detected at ${data.timestamp}`;
+                        
+                        // Professional Badges
+                        if (data.status === 'SUCCESS') {
+                            badgeEl.innerText = 'Success';
+                            badgeEl.className = 'px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-tighter bg-green-500 text-white shadow-lg shadow-green-500/20 border border-green-400/30';
+                            avatarEl.innerHTML = `<img src="https://ui-avatars.com/api/?name=${encodeURIComponent(data.name)}&background=10B981&color=fff" class="w-full h-full object-cover">`;
+                        } else if (data.status === 'ALREADY RECORDED') {
+                            badgeEl.innerText = `Attendance Marked on : ${data.timestamp}`;
+                            badgeEl.className = 'px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-tighter bg-blue-600 text-white shadow-lg shadow-blue-600/20 border border-blue-400/30';
+                            avatarEl.innerHTML = `<img src="https://ui-avatars.com/api/?name=${encodeURIComponent(data.name)}&background=2563EB&color=fff" class="w-full h-full object-cover">`;
+                        } else {
+                            badgeEl.innerText = 'Unknown';
+                            badgeEl.className = 'px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-tighter bg-red-500 text-white shadow-lg shadow-red-500/20 border border-red-400/30';
+                            avatarEl.innerHTML = '<i class="fa-solid fa-user-secret text-red-500 text-2xl"></i>';
+                        }
+                    }
+                })
+                .catch(e => console.error("Live Status API Error:", e));
+        }
+
+        function updateStats() {
+            fetch('/api/stats')
+                .then(r => r.json())
+                .then(data => {
+                    const total = data.total || 0;
+                    const present = data.present || 0;
+                    const absent = data.absent || 0;
+                    // Mocking 'late' if the API doesn't provide it yet, based on random or logic
+                    const late = Math.floor(total * 0.05); 
+
+                    document.getElementById('dash-total').innerText = total;
+                    document.getElementById('dash-present').innerText = present;
+                    document.getElementById('dash-absent').innerText = absent;
+                    document.getElementById('dash-late').innerText = late;
+
+                    // Update Charts dynamically
+                    if(todayChart) {
+                        todayChart.data.datasets[0].data = [present, absent, late];
+                        todayChart.update();
+                    }
+                })
+                .catch(e => console.error("Stats API Error:", e));
+        }
+
+        function fetchRecentList() {
+            fetch('/api/recent')
+                .then(r => r.json())
+                .then(data => {
+                    const list = document.getElementById('scanner-recent-list');
+                    // Get only the last 5 records
+                    const displayData = data.slice(0, 5);
+                    
+                    if (displayData.length === 0) {
+                        list.innerHTML = `<div class="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-sm"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Waiting for scans...</div>`;
+                        return;
+                    }
+                    
+                    list.innerHTML = ''; // Clear current
+                    displayData.forEach(record => {
+                        const dateObj = new Date(record.timestamp + 'Z');
+                        const timeString = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                        
+                        const isLate = record.status === 'Late';
+                        const stColor = isLate ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400';
+                        const stBg = isLate ? 'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-200 dark:border-yellow-700' : 'bg-green-100 dark:bg-green-900/40 border-green-200 dark:border-green-700';
+                        const icon = isLate ? 'fa-clock' : 'fa-check-circle';
+
+                        const div = document.createElement('div');
+                        div.className = 'flex items-center justify-between p-3 rounded-xl bg-white dark:bg-dark-border/30 border border-gray-100 dark:border-dark-border shadow-sm';
+                        div.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400 font-bold text-sm border border-brand-200 dark:border-brand-700">
+                                    ${record.student_name.charAt(0)}
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-sm text-gray-900 dark:text-white">${record.student_name}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">${timeString}</p>
+                                </div>
+                            </div>
+                            <div class="${stBg} ${stColor} border px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5">
+                                <i class="fa-solid ${icon}"></i> ${record.status || 'Present'}
+                            </div>
+                        `;
+                        list.appendChild(div);
+                    });
+                })
+                .catch(e => console.error("Recent API Error:", e));
+        }
+
+        // 6. Fetch Students list
+        function loadStudents() {
+            fetch('/api/students')
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.querySelector('#view-students tbody');
+                    const attendGrid = document.querySelector('#view-attendance .grid');
+                    
+                    tbody.innerHTML = '';
+                    attendGrid.innerHTML = '';
+
+                    if(data.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">No students found.</td></tr>`;
+                        attendGrid.innerHTML = `<div class="col-span-full text-center text-gray-500 py-8">No students available for attendance.</div>`;
+                        return;
+                    }
+
+                    data.forEach(s => {
+                        // Populate Table
+                        const tr = document.createElement('tr');
+                        tr.className = 'hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors';
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 font-mono text-gray-600 dark:text-gray-300 font-bold">${s.rollno || 'N/A'}</td>
+                            <td class="px-6 py-4 font-medium flex items-center gap-3 text-gray-900 dark:text-white">
+                                <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random&color=fff" class="w-8 h-8 rounded-full shadow-sm">
+                                ${s.name}
+                            </td>
+                            <td class="px-6 py-4 text-gray-600 dark:text-gray-300">${s.dept || 'N/A'}</td>
+                            <td class="px-6 py-4 text-center text-gray-600 dark:text-gray-300">
+                                <span class="bg-gray-100 dark:bg-dark-border/50 px-2 py-1 rounded text-xs font-semibold uppercase tracking-wider">${s.year || 'N/A'}</span>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                ${s.today_status === 'Present'
+                                    ? '<span class="inline-flex items-center gap-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-700 px-2.5 py-1 rounded-full text-xs font-bold"><i class="fa-solid fa-check-circle"></i> Present</span>'
+                                    : (s.today_status === 'ALREADY RECORDED'
+                                        ? '<span class="inline-flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-700 px-2.5 py-1 rounded-full text-xs font-bold"><i class="fa-solid fa-info-circle"></i> Already Recorded</span>'
+                                        : '<span class="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700/40 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 px-2.5 py-1 rounded-full text-xs font-bold"><i class="fa-regular fa-clock"></i> Pending</span>')
+                                }
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <div class="w-16 bg-gray-200 dark:bg-dark-border rounded-full h-1.5 flex-1 max-w-[60px]">
+                                        <div class="bg-brand-500 h-1.5 rounded-full" style="width: ${s.attendance_pct || 0}%"></div>
+                                    </div>
+                                    <span class="text-xs font-bold text-gray-600 dark:text-gray-400">${s.attendance_pct || 0}%</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <button onclick="editStudent(${s.id})" class="text-brand-500 hover:text-brand-600 mx-2 p-1 transition-colors hover:scale-110"><i class="fa-solid fa-pen-to-square"></i></button>
+                                <button onclick="deleteStudent(${s.id}, '${s.name}')" class="text-red-500 hover:text-red-600 p-1 transition-colors hover:scale-110"><i class="fa-solid fa-trash-can"></i></button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+
+                        // Populate Attendance Cards
+                        const card = document.createElement('div');
+                        card.className = 'bg-white dark:bg-dark-card rounded-xl p-6 shadow-sm border border-gray-100 dark:border-dark-border text-center hover:shadow-md transition-all duration-200 transform hover:-translate-y-1';
+                        card.innerHTML = `
+                            <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random&color=fff&size=64" class="mx-auto rounded-full mb-3 shadow-sm">
+                            <h3 class="font-semibold text-lg text-gray-900 dark:text-white">${s.name}</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-5 font-mono">ID-${s.id}</p>
+                            <div class="flex justify-center gap-3">
+                                <button onclick="markManual('${s.name}', 'Present')" class="w-10 h-10 rounded-full bg-green-100 text-green-600 hover:bg-green-500 hover:text-white hover:shadow-lg font-bold transition-all dark:bg-green-900/40 dark:text-green-400 focus:outline-none">P</button>
+                                <button onclick="markManual('${s.name}', 'Absent')" class="w-10 h-10 rounded-full bg-red-100 text-red-600 hover:bg-red-500 hover:text-white hover:shadow-lg font-bold transition-all dark:bg-red-900/40 dark:text-red-400 focus:outline-none">A</button>
+                                <button onclick="markManual('${s.name}', 'Late')" class="w-10 h-10 rounded-full bg-yellow-100 text-yellow-600 hover:bg-yellow-500 hover:text-white hover:shadow-lg font-bold transition-all dark:bg-yellow-900/40 dark:text-yellow-400 focus:outline-none">L</button>
+                            </div>
+                        `;
+                        attendGrid.appendChild(card);
+                    });
+                })
+                .catch(e => console.error("Error loading students:", e));
+        }
+
+        // 7. Manual Attendance Post
+        function markManual(name, status) {
+            fetch('/api/attendance/manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ student_name: name, status: status })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    showToast('Attendance Marked', `${name} marked as ${status}`);
+                    // Instant UI refresh — status badge flips without page reload
+                    updateStats();
+                    loadStudents();
+                    fetchRecentList();
+                } else {
+                    showToast('Failed', data.error, 'error');
+                }
+            })
+            .catch(e => console.error("Error marking manual:", e));
+        }
+
+        // 8. Native Hardware Video Bypass Logic
+        const camBtn = document.getElementById('cam-toggle-btn');
+        const localVideo = document.getElementById('local-video');
+        const camOfflineMsg = document.getElementById('cam-offline-msg');
+        const hiddenCanvas = document.getElementById('hidden-ai-canvas');
+        let localStream = null;
+        let aiPushInterval = null;
+
+        async function startNativeScanner() {
+            try {
+                // Request 480p for a balance of quality and processing speed
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480, frameRate: { ideal: 60 } },
+                    audio: false 
+                });
+                
+                localVideo.srcObject = localStream;
+                localVideo.classList.remove('hidden');
+                camOfflineMsg.classList.add('hidden');
+                
+                camBtn.innerHTML = '<i class="fa-solid fa-stop"></i> Stop Camera Scanner';
+                camBtn.classList.replace('bg-brand-500', 'bg-red-500');
+                camBtn.classList.replace('hover:bg-brand-600', 'hover:bg-red-600');
+                cameraRunning = true;
+
+                // Start AI Background Processing (every 500ms)
+                aiPushInterval = setInterval(pushFrameToAI, 500);
+                
+                // Start UI status polling
+                liveStatusInterval = setInterval(updateLivePanel, 500);
+                
+                // Release backend camera to avoid conflicts
+                fetch('/api/camera/stop_scanner', { method: 'POST' }).catch(() => {});
+            } catch (err) {
+                console.error("Camera Access Denied:", err);
+                showToast("Camera Error", "Could not access hardware camera. Check permissions.", "error");
+            }
+        }
+
+        function stopNativeScanner() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            if (aiPushInterval) {
+                clearInterval(aiPushInterval);
+                aiPushInterval = null;
+            }
+            if (liveStatusInterval) {
+                clearInterval(liveStatusInterval);
+                liveStatusInterval = null;
+            }
+            
+            localVideo.classList.add('hidden');
+            localVideo.srcObject = null;
+            camOfflineMsg.classList.remove('hidden');
+            
+            camBtn.innerHTML = '<i class="fa-solid fa-play"></i> Start Camera Scanner';
+            camBtn.classList.replace('bg-red-500', 'bg-brand-500');
+            camBtn.classList.replace('hover:bg-red-600', 'hover:bg-brand-600');
+            cameraRunning = false;
+        }
+
+        function pushFrameToAI() {
+            if (!cameraRunning || !localVideo.videoWidth) return;
+            
+            // Sync hidden canvas size to video
+            hiddenCanvas.width = localVideo.videoWidth;
+            hiddenCanvas.height = localVideo.videoHeight;
+            
+            const ctx = hiddenCanvas.getContext('2d');
+            ctx.drawImage(localVideo, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
+            
+            const base64Image = hiddenCanvas.toDataURL('image/jpeg', 0.8);
+            
+            fetch('/api/scanner/process_frame', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: base64Image })
+            }).catch(e => console.error("AI Push Error:", e));
+        }
+
+        camBtn.addEventListener('click', () => {
+            if(!cameraRunning) {
+                startNativeScanner();
+            } else {
+                stopNativeScanner();
+            }
+        });
+
+        // Tab Visibility Handler: Release hardware camera immediately when tab is hidden
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && cameraRunning) {
+                console.log("[HARDWARE] Tab hidden, releasing camera.");
+                stopNativeScanner();
+                showToast("Camera Paused", "Camera was turned off because the tab was hidden.", "info");
+            }
+        });
+
+        // Auto-stop scanner when tab is hidden or minimized
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden' && cameraRunning) {
+                console.log("[SCANNER] Tab hidden - auto-stopping camera.");
+                camBtn.click();
+            }
+        });
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            updateStats();
+            fetchRecentList();
+            loadStudents();
+
+            // Set default report dates (today)
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('report-to-date').value = today;
+
+            // CSV Export with filters
+            document.getElementById('btn-export-csv').addEventListener('click', () => {
+                const fromDate = document.getElementById('report-from-date').value;
+                const toDate = document.getElementById('report-to-date').value;
+                const dept = document.getElementById('report-dept').value;
+                const year = document.getElementById('report-year').value;
+
+                const params = new URLSearchParams();
+                if (fromDate) params.append('from_date', fromDate);
+                if (toDate) params.append('to_date', toDate);
+                if (dept) params.append('dept', dept);
+                if (year) params.append('year', year);
+
+                window.open('/download_csv?' + params.toString(), '_blank');
+            });
+            
+            // Student Modal and Delete Logic
+            const modal = document.getElementById('modal-add-student');
+            const modalInner = modal.querySelector('div');
+
+            // Close modal when clicking on the backdrop (outside modalInner)
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+            
+            function openModal() {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    modalInner.classList.remove('scale-95');
+                    modalInner.classList.add('scale-100');
+                }, 10);
+            }
+            
+            function closeModal() {
+                modal.classList.add('opacity-0');
+                modalInner.classList.remove('scale-100');
+                modalInner.classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300);
+                
+                // Clear inputs
+                document.getElementById('edit-student-id').value = '';
+                document.getElementById('modal-title').innerText = 'Add New Student';
+                document.getElementById('input-student-name').value = '';
+                document.getElementById('input-student-roll').value = '';
+                document.getElementById('input-student-dept').value = '';
+                document.getElementById('input-student-year').value = '1st';
+                document.getElementById('input-student-email').value = '';
+                document.getElementById('input-student-contact').value = '';
+                document.getElementById('input-student-image').value = '';
+                
+                // Stop live preview
+                stopRegistrationPreview();
+                
+                // Reset UI
+                document.getElementById('capture-preview').src = '';
+                document.getElementById('capture-preview').classList.add('hidden');
+                document.getElementById('captured-overlay').classList.add('hidden');
+                document.getElementById('reg-preview-stream').src = '';
+                document.getElementById('reg-preview-stream').classList.add('hidden');
+                document.getElementById('preview-placeholder').classList.remove('hidden');
+                document.getElementById('face-status-bar').textContent = 'Camera Offline';
+                document.getElementById('face-status-bar').className = 'w-full py-2 px-4 rounded-b-xl text-center text-xs font-bold text-white uppercase tracking-wider bg-gray-400 transition-all duration-300';
+                
+                window.currentCapture = null;
+                window.regPreviewActive = false;
+                resetCaptureButton();
+                resetSaveButton();
+            }
+
+            function resetSaveButton() {
+                const btn = document.getElementById('btn-save-student');
+                btn.disabled = true;
+                btn.className = "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-sm focus:outline-none flex items-center gap-2 cursor-not-allowed";
+                btn.innerHTML = '<i class="fa-solid fa-lock"></i> Save Student';
+            }
+
+            function enableSaveButton(previewSrc = null) {
+                const btn = document.getElementById('btn-save-student');
+                btn.disabled = false;
+                btn.className = "bg-brand-500 hover:bg-brand-600 text-white px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-sm focus:outline-none flex items-center gap-2";
+                btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Save Student';
+                
+                if(previewSrc) {
+                    // Stop live stream, show frozen snapshot
+                    document.getElementById('reg-preview-stream').classList.add('hidden');
+                    const preview = document.getElementById('capture-preview');
+                    preview.src = previewSrc;
+                    preview.classList.remove('hidden');
+                    document.getElementById('preview-placeholder').classList.add('hidden');
+                    document.getElementById('captured-overlay').classList.remove('hidden');
+                    
+                    // Update status bar to blue
+                    const bar = document.getElementById('face-status-bar');
+                    bar.textContent = 'FACE REGISTERED SUCCESSFULLY';
+                    bar.className = 'w-full py-2 px-4 rounded-b-xl text-center text-xs font-bold text-white uppercase tracking-wider bg-blue-500 transition-all duration-300';
+                }
+            }
+            
+            function resetCaptureButton() {
+                const btn = document.getElementById('btn-live-capture');
+                btn.disabled = true;
+                btn.className = 'bg-gray-200 dark:bg-gray-700 text-gray-400 px-3 py-2 rounded-xl text-xs font-semibold transition-all border border-gray-200 dark:border-gray-600 flex items-center justify-center gap-1.5 cursor-not-allowed';
+                btn.innerHTML = '<i class="fa-solid fa-camera"></i> Capture (3s)';
+            }
+            
+            function enableCaptureButton() {
+                const btn = document.getElementById('btn-live-capture');
+                btn.disabled = false;
+                btn.className = 'bg-green-50 dark:bg-green-900/40 hover:bg-green-100 dark:hover:bg-green-900/60 text-green-600 dark:text-green-400 px-3 py-2 rounded-xl text-xs font-semibold transition-all border border-green-100 dark:border-green-800 flex items-center justify-center gap-1.5';
+                btn.innerHTML = '<i class="fa-solid fa-camera"></i> Capture (3s)';
+            }
+
+            // Registration Preview Controls
+            let statusPollInterval = null;
+            let regAnimationId = null;
+            const regCanvas = document.getElementById('reg-preview-canvas');
+            const regTracker = document.getElementById('reg-preview-tracker');
+            
+            function renderRegistration() {
+                if (!window.regPreviewActive) return;
+                const ctx = regCanvas.getContext('2d');
+                ctx.drawImage(regTracker, 0, 0, regCanvas.width, regCanvas.height);
+                regAnimationId = requestAnimationFrame(renderRegistration);
+            }
+
+            function startRegistrationPreview() {
+                regCanvas.width = 320;
+                regCanvas.height = 240;
+                
+                regTracker.src = '/api/registration_preview?' + Date.now();
+                regCanvas.classList.remove('hidden');
+                document.getElementById('preview-placeholder').classList.add('hidden');
+                document.getElementById('capture-preview').classList.add('hidden');
+                document.getElementById('captured-overlay').classList.add('hidden');
+                window.regPreviewActive = true;
+                
+                // Start high-perf rendering
+                renderRegistration();
+                
+                // Update start button
+                const startBtn = document.getElementById('btn-start-preview');
+                startBtn.innerHTML = '<i class="fa-solid fa-stop"></i> Stop Camera';
+                startBtn.classList.replace('bg-indigo-50', 'bg-red-50');
+                startBtn.classList.replace('text-indigo-600', 'text-red-600');
+                
+                // Start polling face status
+                statusPollInterval = setInterval(pollFaceStatus, 500);
+            }
+            
+            function stopRegistrationPreview() {
+                window.regPreviewActive = false;
+                if (regAnimationId) cancelAnimationFrame(regAnimationId);
+                
+                regTracker.src = '';
+                regCanvas.classList.add('hidden');
+                // Instant camera release — bypasses heartbeat watchdog
+                fetch('/api/camera/stop_registration', { method: 'POST' }).catch(() => {});
+                
+                if(statusPollInterval) {
+                    clearInterval(statusPollInterval);
+                    statusPollInterval = null;
+                }
+                resetCaptureButton();
+                
+                const startBtn = document.getElementById('btn-start-preview');
+                startBtn.innerHTML = '<i class="fa-solid fa-video"></i> Start Camera';
+                startBtn.classList.replace('bg-red-50', 'bg-indigo-50');
+                startBtn.classList.replace('text-red-600', 'text-indigo-600');
+            }
+            
+            function pollFaceStatus() {
+                if(!window.regPreviewActive) return;
+                fetch('/api/registration_preview/status')
+                .then(r => r.json())
+                .then(data => {
+                    const bar = document.getElementById('face-status-bar');
+                    bar.textContent = data.message;
+                    if(data.status === 'NO_FACE') {
+                        bar.className = 'w-full py-2 px-4 rounded-b-xl text-center text-xs font-bold text-white uppercase tracking-wider bg-red-500 transition-all duration-300 animate-pulse';
+                        resetCaptureButton();
+                    } else if(data.status === 'TOO_FAR') {
+                        bar.className = 'w-full py-2 px-4 rounded-b-xl text-center text-xs font-bold text-white uppercase tracking-wider bg-yellow-500 transition-all duration-300';
+                        resetCaptureButton();
+                    } else if(data.status === 'READY') {
+                        bar.className = 'w-full py-2 px-4 rounded-b-xl text-center text-xs font-bold text-white uppercase tracking-wider bg-green-500 transition-all duration-300';
+                        enableCaptureButton();
+                    }
+                })
+                .catch(() => {});
+            }
+            
+            // Start/Stop camera toggle
+            document.getElementById('btn-start-preview').addEventListener('click', () => {
+                if(window.regPreviewActive) {
+                    stopRegistrationPreview();
+                } else {
+                    startRegistrationPreview();
+                }
+            });
+
+            // Countdown Capture
+            document.getElementById('btn-live-capture').addEventListener('click', () => {
+                const btn = document.getElementById('btn-live-capture');
+                btn.disabled = true;
+                
+                const overlay = document.getElementById('countdown-overlay');
+                const numEl = document.getElementById('countdown-number');
+                overlay.classList.remove('hidden');
+                
+                let count = 3;
+                numEl.textContent = count;
+                
+                const countdownInterval = setInterval(() => {
+                    count--;
+                    if(count > 0) {
+                        numEl.textContent = count;
+                    } else if(count === 0) {
+                        numEl.textContent = '📸';
+                    } else {
+                        clearInterval(countdownInterval);
+                        overlay.classList.add('hidden');
+                        
+                        // Take the high-res CNN snapshot
+                        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> AI...';
+                        
+                        fetch('/api/students/snapshot', { method: 'POST' })
+                        .then(r => r.json())
+                        .then(data => {
+                            if(data.success) {
+                                window.currentCapture = {
+                                    descriptor: data.descriptor,
+                                    image_data: data.image_data
+                                };
+                                stopRegistrationPreview();
+                                enableSaveButton(data.image_data);
+                                showToast('Captured', 'High-fidelity face snapshot acquired.', 'info');
+                            } else {
+                                showToast('Capture Failed', data.error, 'error');
+                                resetCaptureButton();
+                            }
+                        })
+                        .catch(err => {
+                            showToast('Error', String(err), 'error');
+                            resetCaptureButton();
+                        });
+                    }
+                }, 1000);
+            });
+
+            // Handle file selection (upload fallback)
+            document.getElementById('input-student-image').addEventListener('change', function() {
+                if(this.files && this.files.length > 0) {
+                    stopRegistrationPreview();
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        window.currentCapture = null;
+                        enableSaveButton(e.target.result);
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                } else {
+                    resetSaveButton();
+                }
+            });
+
+            window.editStudent = function(id) {
+                // Find student in local memory or fetch? Let's refetch from a specific endpoint or use existing list
+                fetch('/api/students') // Simple way for now
+                .then(r => r.json())
+                .then(data => {
+                    const s = data.find(x => x.id === id);
+                    if(s) {
+                        document.getElementById('edit-student-id').value = s.id;
+                        document.getElementById('modal-title').innerText = 'Edit Student Details';
+                        document.getElementById('input-student-name').value = s.name;
+                        document.getElementById('input-student-roll').value = s.rollno || '';
+                        document.getElementById('input-student-dept').value = s.dept || '';
+                        document.getElementById('input-student-year').value = s.year || '1st';
+                        document.getElementById('input-student-email').value = s.email || '';
+                        document.getElementById('input-student-contact').value = s.contact || '';
+                        
+                        // For editing, we don't strictly require a NEW face scan unless they want to
+                        enableSaveButton(); // Allow saving existing face data
+                        openModal();
+                    }
+                });
+            }
+
+            document.getElementById('btn-add-student').addEventListener('click', openModal);
+            document.getElementById('btn-cancel-student').addEventListener('click', closeModal);
+
+            document.getElementById('btn-save-student').addEventListener('click', () => {
+                const id = document.getElementById('edit-student-id').value;
+                const name = document.getElementById('input-student-name').value.trim();
+                const roll = document.getElementById('input-student-roll').value.trim();
+                const dept = document.getElementById('input-student-dept').value.trim();
+                const year = document.getElementById('input-student-year').value;
+                const email = document.getElementById('input-student-email').value.trim();
+                const contact = document.getElementById('input-student-contact').value.trim();
+                const fileEl = document.getElementById('input-student-image');
+                const btn = document.getElementById('btn-save-student');
+                
+                if(!name) {
+                    showToast('Validation Error', 'Full Name is required.', 'error');
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('name', name);
+                formData.append('rollno', roll);
+                formData.append('dept', dept);
+                formData.append('year', year);
+                formData.append('email', email);
+                formData.append('contact', contact);
+                
+                if(fileEl.files.length > 0) {
+                    formData.append('file', fileEl.files[0]);
+                } else if(window.currentCapture) {
+                    // Use live capture descriptor instead of file
+                    formData.append('face_descriptor', JSON.stringify(window.currentCapture.descriptor));
+                    formData.append('image_data', window.currentCapture.image_data);
+                }
+                
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...';
+                btn.disabled = true;
+
+                const url = id ? `/api/students/update/${id}` : '/api/students/upload';
+
+                fetch(url, {
+                    method: 'POST', 
+                    body: formData
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.success) {
+                        showToast('Success', data.message);
+                        closeModal();
+                        loadStudents();
+                        updateStats();
+                    } else {
+                        showToast('Error', data.error, 'error');
+                    }
+                })
+                .catch(err => {
+                    showToast('Error', `Operation failed: ${err}`, 'error');
+                })
+                .finally(() => {
+                    btn.innerHTML = id ? 'Update Changes' : 'Save Student';
+                    btn.disabled = false;
+                });
+            });
+
+            window.deleteStudent = function(id, name) {
+                if(!confirm(`Are you sure you want to delete ${name}?`)) return;
+                
+                fetch(`/api/students/${id}`, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.success) {
+                        showToast('Deleted', `${name} has been removed.`, 'info');
+                        loadStudents();
+                        updateStats();
+                    } else {
+                        showToast('Error', data.error, 'error');
+                    }
+                });
+            }
+            
+            // Fetch loop every 5 seconds for stats, 3 seconds for recent scans
+            setInterval(updateStats, 5000);
+            setInterval(fetchRecentList, 3000);
+        });
+    </script>
+</body>
+</html>
