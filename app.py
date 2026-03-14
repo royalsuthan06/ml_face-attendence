@@ -551,17 +551,27 @@ def api_stats():
 def api_students():
     students_list = db_manager.get_all_students()
     
-    # Get today's attendance in one query
+    # Get today's attendance status in one query
+    # If a student is marked multiple times, get their most recent status for today
     with db_manager.get_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT DISTINCT student_name FROM attendance_log WHERE date(timestamp) = date('now')")
-        present_today = set(r[0] for r in cursor.fetchall())
+        cursor.execute('''
+            SELECT student_name, status FROM attendance_log 
+            WHERE date(timestamp) = date('now')
+            ORDER BY timestamp DESC
+        ''')
+        # This will keep only the first (most recent) status encountered for each student
+        today_status_map = {}
+        for row in cursor.fetchall():
+            name, status = row
+            if name not in today_status_map:
+                today_status_map[name] = status
     
     serializable_students = []
     for s in students_list:
         student_dict = s.copy()
         student_dict['attendance_pct'] = 85  # Placeholder
-        student_dict['today_status'] = 'Present' if s['name'] in present_today else 'Pending'
+        student_dict['today_status'] = today_status_map.get(s['name'], 'Pending')
         if 'descriptor' in student_dict:
             del student_dict['descriptor']
         serializable_students.append(student_dict)
@@ -597,6 +607,18 @@ def api_add_student():
             return jsonify({'error': 'Multiple faces found. Please upload an image with only one face.'}), 400
             
         encoding = encodings[0]
+        
+        # 1. Duplicate Contact Check
+        contact_info = data.get('email')
+        if db_manager.check_duplicate_contact(contact_info):
+            return jsonify({'error': 'Duplicate Contact: This email or phone number is already registered.'}), 400
+            
+        # 2. Biometric Anti-Duplicate Check
+        if known_encodings:
+            index, distance = engine.compare_faces(known_encodings, encoding)
+            if index is not None:
+                existing_name = known_names[index]
+                return jsonify({'error': f'Biometric Match Found: You are already registered as {existing_name}.'}), 400
         
         # Save to DB
         student_id = db_manager.add_student(data, encoding)
@@ -666,6 +688,18 @@ def api_upload_student():
             'email': request.form.get('email'),
             'contact': str(request.form.get('contact') or '')
         }
+        
+        # 1. Duplicate Contact Check
+        contact_info = student_data['email']
+        if db_manager.check_duplicate_contact(contact_info):
+            return jsonify({'error': 'Duplicate Contact: This email or phone number is already registered.'}), 400
+            
+        # 2. Biometric Anti-Duplicate Check
+        if known_encodings:
+            index, distance = engine.compare_faces(known_encodings, encoding)
+            if index is not None:
+                existing_name = known_names[index]
+                return jsonify({'error': f'Biometric Match Found: You are already registered as {existing_name}.'}), 400
         
         # Save to DB as JSON-string (handled by DatabaseManager.add_student)
         student_id = db_manager.add_student(student_data, encoding)

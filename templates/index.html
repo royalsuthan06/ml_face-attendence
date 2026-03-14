@@ -405,13 +405,8 @@
             </div>
 
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
-                <input type="email" id="input-student-email" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-white" placeholder="john@example.com">
-            </div>
-
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contact Number</label>
-                <input type="text" id="input-student-contact" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-white" placeholder="+1234567890">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email or Phone Number</label>
+                <input type="text" id="input-student-email" class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-700 dark:text-white" placeholder="john@example.com or +1234567890">
             </div>
 
             <div class="mb-6">
@@ -431,7 +426,7 @@
                     
                     <!-- Countdown Overlay -->
                     <div id="countdown-overlay" class="hidden absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-                        <span id="countdown-number" class="text-8xl font-black text-white drop-shadow-lg">3</span>
+                        <span id="countdown-number" class="text-6xl font-bold text-white drop-shadow-lg animate-pulse">3</span>
                     </div>
                     
                     <!-- Captured Success Overlay -->
@@ -733,16 +728,39 @@
                 .then(r => r.json())
                 .then(data => {
                     const list = document.getElementById('scanner-recent-list');
-                    // Get only the last 5 records
-                    const displayData = data.slice(0, 5);
                     
-                    if (displayData.length === 0) {
+                    if (data.length === 0) {
                         list.innerHTML = `<div class="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-sm"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Waiting for scans...</div>`;
                         return;
                     }
                     
+                    // Filter: Single Entry per 5-minute window
+                    const filteredData = [];
+                    const FIVE_MINUTES_MS = 5 * 60 * 1000;
+                    
+                    for (const record of data) {
+                        const recordDate = new Date(record.timestamp + 'Z');
+                        const recordTime = recordDate.getTime();
+                        
+                        // Check if we already have this student in filteredData within 5 minutes
+                        const existingIdx = filteredData.findIndex(r => r.student_name === record.student_name);
+                        
+                        if (existingIdx !== -1) {
+                            const existingDate = new Date(filteredData[existingIdx].timestamp + 'Z');
+                            const timeDiff = Math.abs(existingDate.getTime() - recordTime);
+                            
+                            // If it's within 5 minutes, keep the most recent one (since data is ordered DESC, the first one encountered is the newest)
+                            if (timeDiff <= FIVE_MINUTES_MS) {
+                                continue; 
+                            }
+                        }
+                        
+                        filteredData.push(record);
+                        if (filteredData.length >= 5) break; 
+                    }
+                    
                     list.innerHTML = ''; // Clear current
-                    displayData.forEach(record => {
+                    filteredData.forEach(record => {
                         const dateObj = new Date(record.timestamp + 'Z');
                         const timeString = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                         
@@ -805,11 +823,14 @@
                                 <span class="bg-gray-100 dark:bg-dark-border/50 px-2 py-1 rounded text-xs font-semibold uppercase tracking-wider">${s.year || 'N/A'}</span>
                             </td>
                             <td class="px-6 py-4 text-center">
-                                ${s.today_status === 'Present'
-                                    ? '<span class="inline-flex items-center gap-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-700 px-2.5 py-1 rounded-full text-xs font-bold"><i class="fa-solid fa-check-circle"></i> Present</span>'
-                                    : (s.today_status === 'ALREADY RECORDED'
-                                        ? '<span class="inline-flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-700 px-2.5 py-1 rounded-full text-xs font-bold"><i class="fa-solid fa-info-circle"></i> Already Recorded</span>'
-                                        : '<span class="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700/40 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 px-2.5 py-1 rounded-full text-xs font-bold"><i class="fa-regular fa-clock"></i> Pending</span>')
+                                ${s.today_status === 'Present' || s.today_status === 'ALREADY RECORDED'
+                                    ? '<span class="inline-flex items-center gap-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-700 px-2.5 py-1 rounded-full text-xs font-bold w-24 justify-center"><i class="fa-solid fa-check-circle"></i> Present</span>'
+                                    : (s.today_status === 'Absent'
+                                        ? '<span class="inline-flex items-center gap-1 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-700 px-2.5 py-1 rounded-full text-xs font-bold w-24 justify-center"><i class="fa-solid fa-times-circle"></i> Absent</span>'
+                                        : (s.today_status === 'Late'
+                                            ? '<span class="inline-flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700 px-2.5 py-1 rounded-full text-xs font-bold w-24 justify-center"><i class="fa-solid fa-clock"></i> Late</span>'
+                                            : '<span class="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700/40 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 px-2.5 py-1 rounded-full text-xs font-bold w-24 justify-center"><i class="fa-regular fa-clock"></i> Pending</span>')
+                                      )
                                 }
                             </td>
                             <td class="px-6 py-4 text-center">
@@ -830,14 +851,18 @@
                         // Populate Attendance Cards
                         const card = document.createElement('div');
                         card.className = 'bg-white dark:bg-dark-card rounded-xl p-6 shadow-sm border border-gray-100 dark:border-dark-border text-center hover:shadow-md transition-all duration-200 transform hover:-translate-y-1';
+                        const pClass = (s.today_status === 'Present' || s.today_status === 'ALREADY RECORDED') ? 'bg-green-500 text-white shadow-lg hover:bg-green-600' : 'bg-green-100 text-green-600 hover:bg-green-500 hover:text-white hover:shadow-lg dark:bg-green-900/40 dark:text-green-400';
+                        const aClass = s.today_status === 'Absent' ? 'bg-red-500 text-white shadow-lg hover:bg-red-600' : 'bg-red-100 text-red-600 hover:bg-red-500 hover:text-white hover:shadow-lg dark:bg-red-900/40 dark:text-red-400';
+                        const lClass = s.today_status === 'Late' ? 'bg-yellow-500 text-white shadow-lg hover:bg-yellow-600' : 'bg-yellow-100 text-yellow-600 hover:bg-yellow-500 hover:text-white hover:shadow-lg dark:bg-yellow-900/40 dark:text-yellow-400';
+
                         card.innerHTML = `
                             <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random&color=fff&size=64" class="mx-auto rounded-full mb-3 shadow-sm">
                             <h3 class="font-semibold text-lg text-gray-900 dark:text-white">${s.name}</h3>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mb-5 font-mono">ID-${s.id}</p>
                             <div class="flex justify-center gap-3">
-                                <button onclick="markManual('${s.name}', 'Present')" class="w-10 h-10 rounded-full bg-green-100 text-green-600 hover:bg-green-500 hover:text-white hover:shadow-lg font-bold transition-all dark:bg-green-900/40 dark:text-green-400 focus:outline-none">P</button>
-                                <button onclick="markManual('${s.name}', 'Absent')" class="w-10 h-10 rounded-full bg-red-100 text-red-600 hover:bg-red-500 hover:text-white hover:shadow-lg font-bold transition-all dark:bg-red-900/40 dark:text-red-400 focus:outline-none">A</button>
-                                <button onclick="markManual('${s.name}', 'Late')" class="w-10 h-10 rounded-full bg-yellow-100 text-yellow-600 hover:bg-yellow-500 hover:text-white hover:shadow-lg font-bold transition-all dark:bg-yellow-900/40 dark:text-yellow-400 focus:outline-none">L</button>
+                                <button onclick="markManual('${s.name}', 'Present', this)" class="w-10 h-10 rounded-full font-bold transition-all focus:outline-none ${pClass}">P</button>
+                                <button onclick="markManual('${s.name}', 'Absent', this)" class="w-10 h-10 rounded-full font-bold transition-all focus:outline-none ${aClass}">A</button>
+                                <button onclick="markManual('${s.name}', 'Late', this)" class="w-10 h-10 rounded-full font-bold transition-all focus:outline-none ${lClass}">L</button>
                             </div>
                         `;
                         attendGrid.appendChild(card);
@@ -847,7 +872,30 @@
         }
 
         // 7. Manual Attendance Post
-        function markManual(name, status) {
+        function markManual(name, status, btnElement) {
+            
+            // Immediate optimistic UI update
+            if (btnElement) {
+                const container = btnElement.parentElement;
+                const pBtn = container.children[0];
+                const aBtn = container.children[1];
+                const lBtn = container.children[2];
+                
+                // Reset to default
+                pBtn.className = 'w-10 h-10 rounded-full font-bold transition-all focus:outline-none bg-green-100 text-green-600 hover:bg-green-500 hover:text-white hover:shadow-lg dark:bg-green-900/40 dark:text-green-400';
+                aBtn.className = 'w-10 h-10 rounded-full font-bold transition-all focus:outline-none bg-red-100 text-red-600 hover:bg-red-500 hover:text-white hover:shadow-lg dark:bg-red-900/40 dark:text-red-400';
+                lBtn.className = 'w-10 h-10 rounded-full font-bold transition-all focus:outline-none bg-yellow-100 text-yellow-600 hover:bg-yellow-500 hover:text-white hover:shadow-lg dark:bg-yellow-900/40 dark:text-yellow-400';
+                
+                // Apply active class
+                if (status === 'Present') {
+                    pBtn.className = 'w-10 h-10 rounded-full font-bold transition-all focus:outline-none bg-green-500 text-white shadow-lg hover:bg-green-600';
+                } else if (status === 'Absent') {
+                    aBtn.className = 'w-10 h-10 rounded-full font-bold transition-all focus:outline-none bg-red-500 text-white shadow-lg hover:bg-red-600';
+                } else if (status === 'Late') {
+                    lBtn.className = 'w-10 h-10 rounded-full font-bold transition-all focus:outline-none bg-yellow-500 text-white shadow-lg hover:bg-yellow-600';
+                }
+            }
+            
             fetch('/api/attendance/manual', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -931,7 +979,7 @@
             cameraRunning = false;
         }
 
-        function pushFrameToAI() {
+        async function pushFrameToAI() {
             if (!cameraRunning || !localVideo.videoWidth) return;
             
             // Sync hidden canvas size to video
@@ -943,11 +991,15 @@
             
             const base64Image = hiddenCanvas.toDataURL('image/jpeg', 0.8);
             
-            fetch('/api/scanner/process_frame', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: base64Image })
-            }).catch(e => console.error("AI Push Error:", e));
+            try {
+                await fetch('/api/scanner/process_frame', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64Image })
+                });
+            } catch(e) {
+                // Silently ignore network errors like ERR_NETWORK_CHANGED to avoid console spam
+            }
         }
 
         camBtn.addEventListener('click', () => {
@@ -1036,7 +1088,6 @@
                 document.getElementById('input-student-dept').value = '';
                 document.getElementById('input-student-year').value = '1st';
                 document.getElementById('input-student-email').value = '';
-                document.getElementById('input-student-contact').value = '';
                 document.getElementById('input-student-image').value = '';
                 
                 // Stop live preview
@@ -1046,8 +1097,12 @@
                 document.getElementById('capture-preview').src = '';
                 document.getElementById('capture-preview').classList.add('hidden');
                 document.getElementById('captured-overlay').classList.add('hidden');
-                document.getElementById('reg-preview-stream').src = '';
-                document.getElementById('reg-preview-stream').classList.add('hidden');
+                
+                const regStream = document.getElementById('reg-preview-stream');
+                if (regStream) {
+                    regStream.src = '';
+                    regStream.classList.add('hidden');
+                }
                 document.getElementById('preview-placeholder').classList.remove('hidden');
                 document.getElementById('face-status-bar').textContent = 'Camera Offline';
                 document.getElementById('face-status-bar').className = 'w-full py-2 px-4 rounded-b-xl text-center text-xs font-bold text-white uppercase tracking-wider bg-gray-400 transition-all duration-300';
@@ -1073,7 +1128,10 @@
                 
                 if(previewSrc) {
                     // Stop live stream, show frozen snapshot
-                    document.getElementById('reg-preview-stream').classList.add('hidden');
+                    const regStream = document.getElementById('reg-preview-stream');
+                    if (regStream) {
+                        regStream.classList.add('hidden');
+                    }
                     const preview = document.getElementById('capture-preview');
                     preview.src = previewSrc;
                     preview.classList.remove('hidden');
@@ -1206,7 +1264,7 @@
                     if(count > 0) {
                         numEl.textContent = count;
                     } else if(count === 0) {
-                        numEl.textContent = '📸';
+                        numEl.textContent = '';
                     } else {
                         clearInterval(countdownInterval);
                         overlay.classList.add('hidden');
@@ -1266,8 +1324,7 @@
                         document.getElementById('input-student-roll').value = s.rollno || '';
                         document.getElementById('input-student-dept').value = s.dept || '';
                         document.getElementById('input-student-year').value = s.year || '1st';
-                        document.getElementById('input-student-email').value = s.email || '';
-                        document.getElementById('input-student-contact').value = s.contact || '';
+                        document.getElementById('input-student-email').value = s.email || s.contact || '';
                         
                         // For editing, we don't strictly require a NEW face scan unless they want to
                         enableSaveButton(); // Allow saving existing face data
@@ -1285,13 +1342,16 @@
                 const roll = document.getElementById('input-student-roll').value.trim();
                 const dept = document.getElementById('input-student-dept').value.trim();
                 const year = document.getElementById('input-student-year').value;
-                const email = document.getElementById('input-student-email').value.trim();
-                const contact = document.getElementById('input-student-contact').value.trim();
+                const emailOrPhone = document.getElementById('input-student-email').value.trim();
                 const fileEl = document.getElementById('input-student-image');
                 const btn = document.getElementById('btn-save-student');
                 
                 if(!name) {
                     showToast('Validation Error', 'Full Name is required.', 'error');
+                    return;
+                }
+                if(!emailOrPhone) {
+                    showToast('Validation Error', 'Email or Phone Number is required.', 'error');
                     return;
                 }
                 
@@ -1300,8 +1360,8 @@
                 formData.append('rollno', roll);
                 formData.append('dept', dept);
                 formData.append('year', year);
-                formData.append('email', email);
-                formData.append('contact', contact);
+                formData.append('email', emailOrPhone);
+                formData.append('contact', emailOrPhone);
                 
                 if(fileEl.files.length > 0) {
                     formData.append('file', fileEl.files[0]);

@@ -145,6 +145,20 @@ class DatabaseManager:
                 })
             return results
 
+    def check_duplicate_contact(self, contact_info):
+        """Checks if the given email or phone already exists in the database."""
+        if not contact_info:
+            return False
+            
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT COUNT(*) FROM students 
+                WHERE email = ? OR contact = ?
+            ''', (contact_info, contact_info))
+            count = cursor.fetchone()[0]
+            return count > 0
+
     def get_student_by_id(self, student_id):
         with self.get_connection() as conn:
             cursor = conn.cursor()
