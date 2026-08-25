@@ -19,6 +19,7 @@ data/vault/
 *.sqlite
 *.sqlite3
 setup_log.txt
+benchmark_results*.json
 *.log
 
 # OS files

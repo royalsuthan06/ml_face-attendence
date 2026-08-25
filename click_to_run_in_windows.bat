@@ -68,7 +68,7 @@ if errorlevel 1 (
 
 :: PHASE 3: WEB & DATABASE (40% - 70%)
 echo [70%%] Syncing Web and Database Modules...
-"%VENV_DIR%\Scripts\python.exe" -m pip install numpy==1.26.4 opencv-python==4.9.0.80 flask bcrypt >> "%LOG_FILE%" 2>&1
+"%VENV_DIR%\Scripts\python.exe" -m pip install "numpy>=1.26.4,<2" "opencv-python>=4.9.0.80,<4.11" flask bcrypt --prefer-binary --default-timeout=100 >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
     color 0c
     echo [!] CRITICAL ERROR: Failed to install modules [numpy/opencv/flask/bcrypt].
@@ -97,7 +97,7 @@ if "!PY_MINOR!"=="12" set "DLIB_WHL=https://github.com/z-mahmud22/Dlib_Windows_P
 if "!PY_MINOR!"=="13" set "DLIB_WHL=https://github.com/z-mahmud22/Dlib_Windows_Python3.x/releases/download/v1/dlib-20.0.99-cp313-cp313-win_amd64.whl"
 if not defined DLIB_WHL set "DLIB_WHL=dlib"
 
-"%VENV_DIR%\Scripts\python.exe" -m pip install !DLIB_WHL! >> "%LOG_FILE%" 2>&1
+"%VENV_DIR%\Scripts\python.exe" -m pip install !DLIB_WHL! --prefer-binary --default-timeout=100 >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
     color 0c
     echo [!] CRITICAL ERROR: Failed to install dlib wheel for Python 3.!PY_MINOR!.
@@ -106,7 +106,7 @@ if errorlevel 1 (
     exit /b
 )
 
-"%VENV_DIR%\Scripts\python.exe" -m pip install face_recognition >> "%LOG_FILE%" 2>&1
+"%VENV_DIR%\Scripts\python.exe" -m pip install face_recognition --prefer-binary --default-timeout=100 >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
     color 0c
     echo [!] CRITICAL ERROR: Failed to install face_recognition.
@@ -116,7 +116,7 @@ if errorlevel 1 (
 )
 
 :: Reinstalling models if necessary
-"%VENV_DIR%\Scripts\python.exe" -m pip install --force-reinstall https://github.com/ageitgey/face_recognition_models/archive/master.zip >> "%LOG_FILE%" 2>&1
+"%VENV_DIR%\Scripts\python.exe" -m pip install --force-reinstall https://github.com/ageitgey/face_recognition_models/archive/master.zip --prefer-binary --default-timeout=100 >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
     color 0c
     echo [!] CRITICAL ERROR: Failed to install face_recognition_models database.
