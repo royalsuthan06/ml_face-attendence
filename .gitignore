@@ -6,13 +6,24 @@ __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
 
-# Virtual environments
+# Virtual Environments (Catches all variations)
 .venv/
 venv/
 env/
 ENV/
+[Vv]env/
+[Ee]nv/
 
-# Project-specific database and logs
+# Large AI/ML Model Files (DO NOT PUSH TO GITHUB DIRECTLY)
+*.dat
+*.onnx
+*.pb
+*.h5
+*.pth
+*.pt
+*.bin
+
+# Database, Logs, and Captures
 data/logs/
 data/vault/
 *.db
@@ -22,9 +33,11 @@ setup_log.txt
 benchmark_results*.json
 *.log
 
-# OS files
+# OS & IDE Files
 .DS_Store
 Thumbs.db
+.vscode/
+.idea/
 
 # Build artifacts
 *.whl
